@@ -1,11 +1,10 @@
 #!/bin/bash
 #
-# This script uses names pipes for losslessly concatenate videos. It's optimised for videos from
-# Cycliq cameras. These cameras produce videos with two streams: H.264 video, and SOWT (PCM) audio.
+# This script losslessly concatenates videos from Cycliq cameras.
+# These cameras produce videos with two streams: H.264 video, and SOWT (PCM) audio.
 # This script uses FFMPEG to join the videos such that the video streams are copied losslessly,
 # but the audio streams are re-encoded to AAC, because FFMPEG doesn't support PCM audio in MP4.
 #
-# See https://trac.ffmpeg.org/wiki/Concatenate#Usingnamedpipestoavoidintermediatefiles
 
 set -euo pipefail
 
@@ -22,7 +21,7 @@ function require {
   done
 }
 
-require basename ffmpeg mkfifo mktemp
+require basename ffmpeg
 
 [ $# -ge 3 ] || { echo "Usage: $("$BASENAME" "$BASH_SOURCE" .sh) in-file-1 in-file-2 [... in-file-n] out-file" >&2; exit 1; }
 
@@ -33,6 +32,7 @@ while [ "$#" -gt 1 ]; do
   [ -r "$1" ] || { echo "Input file not readable: $1" >&2; exit 2; }
   INPUT_FILES+=("$1"); shift
 done
+
 [ ! -e "$1" ] || { echo "Output file already exists: $1" >&2; exit 3; }
 echo "Output: $1"
 OUTPUT_FILE="$1"; shift
@@ -40,17 +40,6 @@ read -n1 -rp "Combine ${#INPUT_FILES[@]} input files [y,n]? " CONFIRMATION
 [[ "$CONFIRMATION" =~ ^[Yy]$ ]] || exit
 echo
 
-# Stream input videos to FIFO pipes, in MPEG-TS format
-TMP_DIR=$("$MKTEMP" -dt "$("$BASENAME" "$BASH_SOURCE" .sh).XXX")
-declare FIFO_PIPES=
-for INPUT_FILE in "${INPUT_FILES[@]}"; do
-  FIFO_PIPE=$("$MKTEMP" -up "$TMP_DIR" fifo.XXX)
-  "$MKFIFO" "$FIFO_PIPE"
-  echo "$FFMPEG" -y -i "$INPUT_FILE" ${AUDIO_FLAGS:-} -c:v copy -bsf:v h264_mp4toannexb -f mpegts "$FIFO_PIPE" -v warning \&
-  "$FFMPEG" -y -i "$INPUT_FILE" ${AUDIO_FLAGS:-} -c:v copy -bsf:v h264_mp4toannexb -f mpegts "$FIFO_PIPE" -v warning &
-  FIFO_PIPES="$FIFO_PIPES|$FIFO_PIPE"
-done
-
 # Concatenate input video streams a new file.
-echo "$FFMPEG" -f mpegts -i "concat:${FIFO_PIPES#|}" -c copy -bsf:a aac_adtstoasc "$OUTPUT_FILE"
-"$FFMPEG" -f mpegts -i "concat:${FIFO_PIPES#|}" -c copy -bsf:a aac_adtstoasc "$OUTPUT_FILE"
+echo "$FFMPEG" -hide_banner -f concat -safe 0 -i \<\(printf "file %q\n" "${INPUT_FILES[@]}"\) ${AUDIO_FLAGS:-} -c:v copy "$OUTPUT_FILE"
+"$FFMPEG" -hide_banner -f concat -safe 0 -i <(printf "file %q\n" "${INPUT_FILES[@]}") ${AUDIO_FLAGS:-} -c:v copy "$OUTPUT_FILE"
