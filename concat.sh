@@ -8,10 +8,6 @@
 
 set -euo pipefail
 
-# Default to YouTube's recommendations; ie AAC-LC at 384 kbps (for stereo).
-# See https://support.google.com/youtube/answer/1722171?hl=en
-: ${AUDIO_FLAGS:=-c:a aac -profile:a aac_low -b:a 384k}
-
 function require {
   local C;
   for c in "$@"; do
@@ -39,6 +35,10 @@ OUTPUT_FILE="$1"; shift
 read -n1 -rp "Combine ${#INPUT_FILES[@]} input files [y,n]? " CONFIRMATION
 [[ "$CONFIRMATION" =~ ^[Yy]$ ]] || exit
 echo
+
+# Choose default audio options (see README.md for more information).
+[ "${OUTPUT_FILE##*.}" != 'mp4' ] || : ${AUDIO_FLAGS:=-c:a aac -profile:a aac_low -b:a 384k}
+: ${AUDIO_FLAGS:=-c:a copy}
 
 # Concatenate input video streams a new file.
 echo "$FFMPEG" -hide_banner -f concat -safe 0 -i \<\(printf "file %q\n" "${INPUT_FILES[@]}"\) ${AUDIO_FLAGS:-} -c:v copy "$OUTPUT_FILE"
