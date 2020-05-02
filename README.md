@@ -60,10 +60,10 @@ audio. For this reason, if the output is an `*.mp4` file, then `AUDIO_FLAGS` def
 
 That is, the audio stream will be converted (from 16-bit steroe PCM) to AAC Low Complexity
 at 384 kbps. This default was chosen to match [YouTube's recommendation][2], since uploading
-to YouTube is common use-case, but can of course this be overridden (by setting
-`AUDIO_FLAGS`) if desired.
+to YouTube is a common use-case, but of course this be overridden (by setting `AUDIO_FLAGS`)
+if desired.
 
-For example, use FLAC, do something like:
+For example, to use FLAC, do something like:
 
 ```sh
 AUDIO_FLAGS='-c:a flac' ./concate.sh ... output.mkv
@@ -87,7 +87,7 @@ be used instead. For example, if `SPEED_UP` is set to `5`, then the resulting vi
 be four times faster, since 4 is nearest power of two to 5.
 
 Also note, that since speeding up the audio (while keeping the original pitch) requires
-re-encoding the audio, lossless audio is not possible in this mode.  In this case the
+the audio to be re-encoded, lossless audio is not possible in this mode.  In this case the
 script defaults to AAC (the same default specified for MP4 output in the [Audio](#Audio)
 secition above) though a lossless output codec, such as LPCM, can still be specified
 by the `AUDIO_FLAGS` variable if desired.
