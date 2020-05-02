@@ -22,7 +22,9 @@ For this reason, FFmpeg will happily read such containers, but [not write them][
 
 ## Concatenate
 
-The `concat.sh` script joins video ... (more info later).
+The Cycliq video cameras automatically split sessions into multiple video files
+(to make the file "more manageable"). The `concat.sh` script here can be used to join
+those files into a single video.
 
 Basic usage:
 
@@ -44,6 +46,21 @@ environment variables:
 
 * `AUDIO_FLAGS` - overrides the default audio codec; see [Audio](#Audio) below.
 * `SPEED_UP` - overrides the playback speed; see [Speed-up](#Speed-up) below.
+
+### Output Codecs
+
+By default, `concat.sh` attempts to most lossless codecs possible, but lossless
+copying is not always possible. See the [Audio](#Audio) and [Speed-up](#Speed-up)
+sections below for more details, but the following table summarised the *default*
+output codecs the script chooses.
+
+| Speed | Container | Audio | Video |
+| :---: | :-------: | :---: | :---: |
+| Original | Matroska (mkv) | LPCM (lossless copy) | H.264 (lossless copy) |
+| Original | MPEG-4 (mp4) | AAC-LC 384kpbs | H.264 (lossless copy) |
+| Sped-up | Matroska (mkv) | AAC-LC 384kpbs | H.264 (re-encoded) |
+| Sped-up | MPEG-4 (mp4) | AAC-LC 384kpbs | H.264 (re-encoded) |
+
 
 ### Audio
 
