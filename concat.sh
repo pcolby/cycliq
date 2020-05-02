@@ -18,6 +18,7 @@ function require {
 }
 
 require basename ffmpeg
+[ "${SPEED_UP:-1}" -eq 1 ] || require bc ffprobe
 
 [ $# -ge 3 ] || { echo "Usage: $("$BASENAME" "$BASH_SOURCE" .sh) in-file-1 in-file-2 [... in-file-n] out-file" >&2; exit 1; }
 
@@ -36,10 +37,27 @@ read -n1 -rp "Combine ${#INPUT_FILES[@]} input files [y,n]? " CONFIRMATION
 [[ "$CONFIRMATION" =~ ^[Yy]$ ]] || exit
 echo
 
-# Choose default audio options (see README.md for more information).
-[ "${OUTPUT_FILE##*.}" != 'mp4' ] || : ${AUDIO_FLAGS:=-c:a aac -profile:a aac_low -b:a 384k}
-: ${AUDIO_FLAGS:=-c:a copy}
+# Setup speed-up flags (if relevant).
+[ "${SPEED_UP:-1}" -eq 1 ] || {
+  shopt -sq extglob
+  printf -v EXPONENT '%.0f' $("$BC" -l <<< "l($SPEED_UP)/l(2)")
+  printf -v AUDIO_FILTER 'atempo=2.0,%.0s' $(eval echo {1..$EXPONENT})
+  printf -v VIDEO_FILTER 'tblend=average,framestep=2,%.0s' $(eval echo {1..$EXPONENT})
+  PTS="0$("$BC" -l <<< "1/(2^$EXPONENT)")"
+  AUDIO_FILTER="${AUDIO_FILTER:0:-1}"     # Trim the tailing ',' character.
+  VIDEO_FILTER+="setpts=${PTS%%+(0)}*PTS" # Append the PTS.
+  FRAME_RATE=$("$FFPROBE" -v warning -select_streams V -show_entries stream=r_frame_rate -of csv=p=0 -i "${INPUT_FILES[0]}")
+  echo "$EXPONENT|${PTS%%+(0)}|$AUDIO_FILTER|$VIDEO_FILTER|$FRAME_RATE"
+}
+
+# If writing to MP4, or using an audio filter then default to AAC-LC (see README.md for more information).
+[[ "${OUTPUT_FILE##*.}" != 'mp4' && -z "${AUDIO_FILTER:-}" ]] ||
+  : ${AUDIO_FLAGS:=-c:a aac -profile:a aac_low -b:a 384k}
 
 # Concatenate input video streams a new file.
-echo "$FFMPEG" -hide_banner -f concat -safe 0 -i \<\(printf "file %q\n" "${INPUT_FILES[@]}"\) ${AUDIO_FLAGS:-} -c:v copy "$OUTPUT_FILE"
-"$FFMPEG" -hide_banner -f concat -safe 0 -i <(printf "file %q\n" "${INPUT_FILES[@]}") ${AUDIO_FLAGS:-} -c:v copy "$OUTPUT_FILE"
+echo "$FFMPEG" -hide_banner -f concat -safe 0 -i \<\(printf "file %q\n" "${INPUT_FILES[@]}"\) \
+  ${AUDIO_FLAGS:--c:a copy} ${AUDIO_FILTER:+-af $AUDIO_FILTER} \
+  ${VIDEO_FILTER:+-vf} ${VIDEO_FILTER:--c:v copy} ${FRAME_RATE:+-r $FRAME_RATE} "$OUTPUT_FILE"
+"$FFMPEG" -hide_banner -f concat -safe 0 -i <(printf "file %q\n" "${INPUT_FILES[@]}") \
+  ${AUDIO_FLAGS:--c:a copy} ${AUDIO_FILTER:+-af $AUDIO_FILTER} \
+  ${VIDEO_FILTER:+-vf} ${VIDEO_FILTER:--c:v copy} ${FRAME_RATE:+-r $FRAME_RATE} "$OUTPUT_FILE"
