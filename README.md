@@ -61,7 +61,6 @@ output codecs the script chooses.
 | Sped-up | Matroska (mkv) | AAC-LC 384kpbs | H.264 (re-encoded) |
 | Sped-up | MPEG-4 (mp4) | AAC-LC 384kpbs | H.264 (re-encoded) |
 
-
 ### Audio
 
 The audio stream included in the output video file is defined by the `AUDIO_FLAGS` environment
@@ -108,6 +107,36 @@ the audio to be re-encoded, lossless audio is not possible in this mode.  In thi
 script defaults to AAC (the same default specified for MP4 output in the [Audio](#Audio)
 secition above) though a lossless output codec, such as LPCM, can still be specified
 by the `AUDIO_FLAGS` variable if desired.
+
+## Addendum
+
+Just some rough, random notes...
+
+A quick, hacky way to check which (if any) lossless audio codecs FFmpeg supports for any
+given *output* container:
+
+```sh
+for CODEC in $(ffmpeg -codecs 2>&1 | grep '^ .EA..S' | cut -d' ' -f3); do
+  echo ">> $CODEC"
+  ffmpeg -y -v error -i small-test-video.mp4 -c:a "$CODEC" -c:v copy "test-$CODEC.mp4"
+done
+ls -lrS *.mp4
+```
+
+So, for example, for FFmpeg 4.1.4, no lossless codecs are supported for MP4 containers
+(without enabling experimental features). And the following are supported for Matroska
+containers: `alac`, `flac`, `tta`, `wavpack`, and a bunch of `pcm_*` formats.
+
+For what its worth, `*.mkv` files with any of those four lossless compression formats
+work fine with both YouTube and VLC. I didn't bother trying the PCM formats with YouTube,
+but some (floating point PCM formats?) don't work with VLC.
+
+### To do
+
+* Consider changing the default `mp4` audio codec to MPEG4-ALS if/when FFmpeg supports
+  it (currently FFmpeg can *decode*, but not *encode* ALS).
+* Consider changing the default audio codec for sped-up `mkv` output to something
+  lossless (perhaps ALAC?).
 
 
 [1]: https://trac.ffmpeg.org/ticket/3818
