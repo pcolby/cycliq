@@ -7,7 +7,8 @@ Just some scripts for working with [Cycliq] camera videos.
 Cycliq camera videos contain two streams within an MP4 container:
 
 * Video: H264, with configurable resolution and frame-rate (eg 1920x1080, 60 FPS).
-* Audio: LPCM, 16-bit, signed, little endian, 48kHz, stereo.
+* Audio: FLY12CE: LPCM, 16-bit, signed, little endian, 48kHz, stereo (1,535 kb/s).
+* Audio: FLY6CE: LPCM, 16-bit, signed, little endian, 44.1kHz, stereo (1,411 kb/s).
 
 Just an example:
 
